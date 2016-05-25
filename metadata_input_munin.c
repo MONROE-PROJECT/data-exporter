@@ -101,6 +101,18 @@ uint8_t md_munin_reconnect (struct md_input_munin *mim, const char *address, con
     return RETVAL_SUCCESS;
 }
 
+int dtos_variable(struct json_object *jso, struct printbuf *pb, int level, int flags) {
+  double val = json_object_get_double(jso);
+  double ival;
+  double fraction = modf(val, &ival);
+  if (fraction > 0) {
+    sprintbuf(pb, "%.6lf", val);
+  } else {
+    sprintbuf(pb, "%.0lf", ival);
+  }
+  return 0;
+}
+
 void md_munin_json_add_key_value(char* kv, json_object* blob) {
   char *running = kv;
   // a munin string is in the form uptime.value 1.23
@@ -117,8 +129,18 @@ void md_munin_json_add_key_value(char* kv, json_object* blob) {
   char *value   = strsep(&running, "\n");
   
   struct json_object *obj_add = NULL;
-  if ((obj_add = json_object_new_string(value))==NULL) 
-    return;
+  char *pEnd;
+  double dvalue = strtod(value, &pEnd);
+  if (*pEnd == 0) {
+    if ((obj_add = json_object_new_double(dvalue))==NULL) {
+      return;
+    }
+    json_object_set_serializer(obj_add, dtos_variable, NULL, NULL);
+  } else {
+    if ((obj_add = json_object_new_string(value))==NULL) {
+      return;
+    }
+  } 
   json_object_object_add(blob, key, obj_add);
 }
 

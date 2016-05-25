@@ -30,7 +30,9 @@
 #include <pthread.h>
 #include <stdint.h>
 
-#include JSON_LOC
+#define INCLUDE_JSON(M) <JSON_LOC/M>
+#include INCLUDE_JSON(json.h)
+#include INCLUDE_JSON(printbuf.h)
 
 #include "lib/minmea.h"
 

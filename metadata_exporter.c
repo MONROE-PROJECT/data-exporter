@@ -37,7 +37,6 @@
 #include <syslog.h>
 
 #include <libmnl/libmnl.h>
-#include JSON_LOC
 #include <sys/time.h>
 
 #include "metadata_exporter.h"
