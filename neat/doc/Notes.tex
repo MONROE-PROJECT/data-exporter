@@ -1,41 +1,39 @@
 \documentclass{scrartcl}
 
+\usepackage{hyperref}
+
 \begin{document}
 
-\title{End-of-work handover}
+\title{Making wireless connection info of MONROE nodes available for NEAT}
 \author{Andreas Fischer}
 \maketitle
 
-\section*{Python bindings}
+\section*{Overview}
 
-Python bindings are now in a usable version and the example program
-\verb#minimal_server# is functional in its Python variant. The code
-has been taken over into the NEAT master branch, already, and can
-be used by anyone now. While the code might still be buggy, basic
-support for all functionality exported by the NEAT library should be
-there.
-
-The approach and the results have been described in detail in
-deliverable D2.3. Anyone interested in picking up further work on that
-issue can read the respective section as starting point.
-
-\section*{Making wireless connection info of MONROE nodes available for NEAT}
-
-Goals:
+This document serves to record the progress that has been made on making
+information about the wireless signal in MONROE nodes available to clients
+using the NEAT networking library. It discusses in particular the obstacles
+encountered during this task and it should serve as a starting point for
+anyone picking up the work after my imminent leave at Karlstad. The initial
+goals of this task were as follows:
 
 \begin{itemize}
-	\item Obtain quality information of wireless connection
-	\item Feed info into NEAT CIB
-	\item Make info available in MONROE metadata stream
+	\item Obtain connection quality information of a wireless connection
+	\item Feed the obtained info into the NEAT CIB
+	\item Make the obtained info available in the MONROE metadata stream
 \end{itemize}
 
-\subsection*{Getting information on the wireless signal}
+\section*{Getting information on the wireless signal}
 
-There are two easily accessible sources for wireless connection information
-in Linux systems: The file \verb#/proc/net/wireless# and the console command
-\verb#iwlist scan#.
+There are three easily accessible sources for wireless connection information
+in Linux systems: the file \verb#/proc/net/wireless#, the console command
+\verb#iwconfig#, and the console command \verb#iwlist scan#. Unfortunately, the
+output of the \verb#iwconfig# command is difficult to parse completely, since
+it may change between different machines and for different wireless cards. The
+other two are readily available, though, each with their respective advantages
+and disadvantages.
 
-\subsubsection*{File contents of /proc/net/wireless}
+\subsection*{File contents of /proc/net/wireless}
 
 The Linux kernel provides information about wireless connection quality in
 the file \verb#/proc/net/wireless#. This file is most commonly used by various
@@ -52,10 +50,11 @@ Reading this file is simple and straightforwad. The RSSI value (in dB) is the
 one described as ``Quality level''. A notable disadvantage of this file is,
 however, that information is only available if the node is currently connected
 to an access point. Nevertheless, a C program that parses this file and
-provides the individual values in a C struct has been written, already. 
+provides the individual values in a C struct has been written, already
+(see \verb#parse_pnw.c#). 
 
 
-\subsubsection*{Console command ``iwlist scan''}
+\subsection*{Console command ``iwlist scan''}
 
 An alternative to the previous approach would be to use the \verb#iwlist#
 command that is bundled with the Linux wireless tools. It has the advantage
@@ -82,7 +81,7 @@ wlp1s0    Scan completed :
                     Frequency:2.437 GHz (Channel 6)
                     Quality=46/70  Signal level=-64 dBm  
                     Encryption key:on
-                    ESSID:"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                    ESSID:"\x00"
                     [...]
 \end{verbatim}
 
@@ -91,13 +90,19 @@ rights. While the command can still be executed with normal user rights,
 results will be limited to the cached results of the last scan. This is
 relevant, in particular, when the wireless card is not yet connected to any
 access point, in which case there might not be a previous scan.  Nevertheless,
-a Python script has been written to execute the command and parse its results
-to make them easily available algorithmically.
+the \verb#wireless_publisher.py# Python script described below includes
+functionality for parsing this information.
 
-\subsection*{Feeding information fed into the MONROE metadata stream}
+It should be noted that other Python packages already exist, which provide
+parsers as well.  Two examples can be found on GitHub:
+\verb#python_iwlist#\footnote{\url{https://github.com/iancoleman/python-iwlist}}
+and
+\verb#iw_parse#\footnote{\url{https://github.com/cuzzo/iw_parse}}.
+
+\section*{Feeding information fed into the MONROE metadata stream}
 
 MONROE publishes metadata over a ZeroMQ publish-subscribe network. Only one
-publisher ("metadata-exporter") is defined -- any subscriber can ask for
+publisher (``metadata-exporter'') is defined -- any subscriber can ask for
 metadata by connecting to its port.
 
 To feed additional data into the stream produced by the metadata-exporter,
@@ -105,7 +110,7 @@ two solution approaches are possible: Either to modify the publisher to include
 relevant information or to introduce a message broker which can arbitrate
 between multiple publishers and subscribers.
 
-\subsubsection*{Modifying the metadata-exporter}
+\subsection*{Modifying the metadata-exporter}
 
 The metadata-exporter implements a message broker of its own. Several inputs
 (``readers'') and several outputs (``writers'') are supported. According to the
@@ -114,29 +119,53 @@ SQLite) are currently used. Thus, to feed additional data into the metadata
 stream, either the Netlink module has to be modified, or an additional input
 has to be defined. At any rate, modifying the metadata-exporter requires
 recompilation and redistribution of the MONROE base image. This complicates
-debugging and testing somewhat.
+debugging and testing somewhat. Nevertheless, in the mid-term this will likely
+be the favourable option from an architectural viewpoint.
 
 The Netlink module receives JSON-coded events from a Linux netlink socket and
-publishes them via the metadata-exporter. It is, however, unclear where these
-events come from. The provided data does not look like typical kernel
-information, and it seems that actually some module is missing in the public
-source code, which represents the other side of the Netlink socket. Without more
-knowledge about this module---or at least some specification about the data it
-pushes over the Netlink socket---it is difficult to inject data appropriately.
+publishes them via the metadata-exporter. However, the other side of the
+netlink socket appears to be controlled by a proprietary module from Celerway.
+Without more knowledge about this module---or at least some specification about
+the data it pushes over the Netlink socket---it is difficult to inject data
+appropriately.
 
-\subsubsection*{Adding a message broker}
-
-The message broker option has also been investigated. Indeed, ZeroMQ discusses this
-message pattern and offers a solution for it: the XPUB/XSUB sockets. Adapted to
-MONROE, the concept would be as follows:
+The overall architecture appears to be as follows:
 
 \begin{verbatim}
-|PUB| |PUB| |MDE| <-- This would be the original metadata-exporter
+          |_?_|  <-- Proprietary module
+            |
+Readers:  |Netlink|     ...
+            |            |
+            \------+-----/
+                   |
+                 |MDE|
+                   |
+            /------+-----\
+            |      |     |
+Writers:  |ZMQ|  |SQL|  ...
+\end{verbatim}
+
+Any injection of wireless signal information either has to happen at the
+proprietary module (which actually already includes some information on the
+wireless connection), or by adding a new reader module to the metadata-exporter.
+Writers likely need to be modified, as well, to include the additional data and
+ensure it is in the right format.
+
+\subsection*{Adding a message broker}
+
+As a rapid prototyping alternative to modifying the metadata-exporter, the
+option of using a ZeroMQ message broker has been investigated. Indeed, ZeroMQ
+already discusses such a message pattern and offers a specific solution for it:
+the XPUB/XSUB sockets. Adapted to MONROE, the architectural concept is as
+follows:
+
+\begin{verbatim}
+|PUB| |PUB| |MDE| <-- The metadata-exporter ZMQ writer
   |     |     |
   \-----+-----+
-        |     \----|MONROE legacy|
+        |     \----|SUB| <-- Other MONROE subscribers
       |XSUB|
-      |....|
+      |....|  <-- This component implements the message broker
       |XPUB|
         |
   /-----+-----\
@@ -145,18 +174,46 @@ MONROE, the concept would be as follows:
 \end{verbatim}
 
 The XSUB/XPUB module that is central to this concept has been implemented in
-Python. Unfortunately, it does not operate as expected on the MONROE node.
-After extensive testing it was found out that the XPUB/XSUB sockets do not work
-on the MONROE node. Even the respective ZeroMQ example code
-(\verb#espresso.py#) is dysfunctional there (as opposed to a normal desktop
-machine). The reason for that still remains unclear.
+Python (see \verb#zmq_proxy.py#). A publisher that parses and publishes the
+respective WLAN information is implemented in the \verb#wireless_publisher.py#
+script.
 
-\subsection*{Getting wireless information into the CIB}
+The \verb#wireless_publisher.py# script uses the \verb#iwconfig# output to
+obtain the name of the wireless interface and the name of the currently
+connected ESSID\@.  This information is then extended by the information found in
+\verb#/proc/net/wireless# and the IP address of the interface, obtained from
+the linux \verb#ip address# command. The information is collected and
+represented as JSON string. It is fed every five seconds into the message broker
+with a topic of \verb#MONROE.META.DEVICE.WLAN.SIGNAL#. The format of the
+messages is as follows (line breaks included to increase readability):
+
+\begin{verbatim}
+MONROE.META.DEVICE.WLAN.SIGNAL {"Noise": -256, "InterfaceName": "wlp1s0:",
+    "SequenceNumber": 2, "Timestamp": 1504167695.698841,
+    "ESSID": "eduroam", "RSSI": -67, "Quality": 43,
+    "IPAddress": "130.243.28.193"}
+\end{verbatim}
+
+Before information can be properly received, it has to be ensured that the
+wireless interface is up and the firewall that is active on the MONROE nodes is
+configured not to block the traffic from and to the message broker. In
+particular, on IP address \verb#172.17.0.1# (the \verb#docker0# address) the
+following ports have to be reachable:
+
+\begin{itemize}
+	\item Port 5556 (i.e., the original metadata-exporter port)
+	\item Port 5576 (the port for other publishers to connect to)
+	\item Port 5577 (the port for subscribers to connect to)
+\end{itemize}
+
+
+\section*{Getting wireless information into the CIB}
 
 In order for NEAT connections to make use of connectivity information, data on
-wireless signal strength is to be fed into the CIB. If the wireless information
+wireless signal strength is to be fed into the CIB\@. If the wireless information
 can be included in the metadata-exporter Netlink component, there already
 exists a NEAT writer for the MONROE metadata-exporter, which can simply be
-reused.
+reused. If the message broker approach is used, a subscriber has to be written
+which feeds the information into the NEAT CIB\@. This has not been done, yet.
 
 \end{document}
