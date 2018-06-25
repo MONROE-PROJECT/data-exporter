@@ -257,6 +257,63 @@ static void md_neat_handle_iface_event(struct md_writer_neat *mwn,
     json_object_put(obj);
 }
 
+static void md_neat_handle_zeromq(struct md_writer_neat *mwn,
+                                      struct md_zeromq_event *mge)
+{
+    struct json_object *obj, *properties;
+    char buf[8192];  //Complete ZeroMQ string (with topic)
+    const char *json_msg; //ZeroMQ body
+    const char *topic; //ZeroMQ topic
+    const char filter[]="MONROE.META.DEVICE.WLAN.SIGNAL"
+    char *p; //postition of division between topic and body
+    json_object *zmqh_obj = NULL, *ifObj = NULL;
+    int retval;
+
+    retval = snprintf(buf, sizeof(buf), "%s", mge->msg);
+    if (retval >= sizeof(buf)) {
+        return;
+    }
+
+    json_msg = strchr(buf, '{');
+    if (json_msg == NULL) {
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "Received invalid (null) JSON object\n");
+        continue;
+    }
+
+    zmqh_obj = json_tokener_parse(json_msg);
+    if (!zmqh_obj) {
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "Received invalid JSON object\n");
+        continue;
+    }
+
+    p = strchr(buf, ' ');
+    if (p == NULL) {
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "Received invalid (null) topic\n");
+        continue;
+    }
+    *p = 0;
+    topic = buf;
+
+    META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NEAT: %s:%s\n",
+                      topic, json_msg);
+
+    if (strcmp(filter, topic)) {
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "Wrong topic\n");
+        continue;
+    }
+    if (! json_object_object_get_ex(zmqh_obj, 'InterfaceName', &ifObj)
+    {
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "No InterfaceName\n");
+        continue;
+    }
+
+    md_neat_notify_pm(mwn, zmqh_obj);
+    md_neat_dump_cib_file(mwn, json_object_get_string(ifObj), zmqh_obj);
+
+    json_object_put(zmqh_obj);
+    json_object_put(ifObj);
+}
+
 static int32_t md_neat_init(void *ptr, json_object* config)
 {
     struct md_writer_neat *mwn = ptr;
@@ -302,6 +359,8 @@ static void md_neat_handle(struct md_writer *writer, struct md_event *event)
     case META_TYPE_INTERFACE:
         md_neat_handle_iface_event(mwn, (struct md_iface_event*) event);
         break;
+    case META_TYPE_ZEROMQ:
+        md_neat_handle_zeromq(mwn, (struct md_zeromq_event*) event);
     default:
         return;
     }
