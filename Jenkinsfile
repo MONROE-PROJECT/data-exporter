@@ -1,6 +1,6 @@
 import java.text.SimpleDateFormat
 jobName = "metadata-exporter"
-version = "0.1.51"
+version = "0.1.52"
 build_dir = "build"
 buildPackageName = "meta-exporter"
 
@@ -35,7 +35,7 @@ node ('dockerslave') {
 
     stage ('Build') {
         dir(build_dir) {
-            sh "cmake ../metadata-exporter-alt -DNNE=1 -DSQLITE3=1 -DZEROMQ_WRITER=1 -DZEROMQ_RELAY=1 -DGPS_NSB=1 -DMUNIN=1 -DSYSEVENT=1 && make && make package"
+            sh "cmake ../metadata-exporter-alt -DNNE=1 -DSQLITE3=1 -DZEROMQ_INPUT=1 -DZEROMQ_WRITER=1 -DZEROMQ_RELAY=1 -DGPS_NSB=1 -DMUNIN=1 -DSYSEVENT=1 && make && make package"
         }
         sh "chmod +x versionize/versionize.sh; cp versionize/versionize.sh build/"
         dir(build_dir) {
