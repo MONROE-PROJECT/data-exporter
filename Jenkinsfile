@@ -8,7 +8,7 @@ node ('dockerslave') {
     // Be sure that workspace is cleaned
     deleteDir()
     stage ('Git') {
-        git branch: 'master', url: 'git@github.com:MONROE-PROJECT/Utilities.git'
+        git branch: 'n1', url: 'git@github.com:MONROE-PROJECT/Utilities.git'
 
         checkout([$class: 'GitSCM',
             branches: [[name: 'master']],
