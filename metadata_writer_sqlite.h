@@ -201,6 +201,10 @@
                             "NodeId=? "\
                             "WHERE NodeId=0"
 
+#define UPDATE_GPS_ID   "UPDATE GpsUpdate SET " \
+                            "NodeId=? "\
+                            "WHERE NodeId=0"
+
 #define UPDATE_EVENT_TSTAMP "UPDATE NetworkEvent SET " \
                             "Timestamp = (Timestamp - ?) + ? "\
                             "WHERE Timestamp < ?"
@@ -213,6 +217,10 @@
                                   "Timestamp = (Timestamp - ?) + ? "\
                                   "WHERE Timestamp < ?"
 
+#define UPDATE_GPS_TSTAMP     "UPDATE GpsUpdate SET " \
+                              "Timestamp = (Timestamp - ?) + ? "\
+                              "WHERE Timestamp < ?"
+
 #define UPDATE_EVENT_SESSION_ID "UPDATE NetworkEvent SET "\
                                 "SessionId=?,SessionIdMultip=? "\
                                 "WHERE SessionId = 0"
@@ -224,6 +232,10 @@
 #define UPDATE_SYSTEM_SESSION_ID "UPDATE RebootEvent SET "\
                                   "BootCount=?,BootMultiplier=? "\
                                   "WHERE BootCount = 0"
+
+#define UPDATE_GPS_SESSION_ID "UPDATE GpsUpdate SET "\
+                              "BootCount=?,BootMultiplier=? "\
+                              "WHERE BootCount = 0"
 
 #define DELETE_TABLE         "DELETE FROM NetworkEvent"
 
@@ -262,6 +274,8 @@ struct md_writer_sqlite {
     uint64_t last_msg_tstamp;
     uint64_t last_gps_insert;
     uint64_t orig_boot_time;
+    uint64_t orig_uptime;
+    uint64_t orig_raw_time;
 
     //TODO: Consider moving this to the generic writer struct if need be
     //These values keep track of the unique session id (and multiplier), which

@@ -292,7 +292,7 @@ static int32_t md_inventory_execute_update_usage(struct md_writer_sqlite *mws,
     if (sqlite3_bind_int64(stmt, 1, mce->rx_bytes) ||
         sqlite3_bind_int64(stmt, 2, mce->tx_bytes) ||
         sqlite3_bind_int(stmt, 4, mce->network_address_family) ||
-        sqlite3_bind_int64(stmt, 6, date_start)) {
+        sqlite3_bind_int64(stmt, 7, date_start)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query\n");
         return SQLITE_ERROR;
     }
@@ -318,6 +318,8 @@ static int32_t md_inventory_execute_update_usage(struct md_writer_sqlite *mws,
             return SQLITE_ERROR;
         }
     }
+
+    META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Update query: %s\n", sqlite3_expanded_sql(stmt));
 
     return sqlite3_step(stmt);
 }
@@ -530,6 +532,8 @@ static uint8_t md_inventory_handle_usage_update(struct md_writer_sqlite *mws,
     tm_tmp.tm_min = 0;
 
     date_start = (uint64_t) timegm(&tm_tmp);
+
+    META_PRINT_SYSLOG(mws->parent, LOG_ERR, "DATE START %lu\n", date_start);
 
     retval = md_inventory_execute_update_usage(mws, mce, date_start);
 

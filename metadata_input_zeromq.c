@@ -337,7 +337,8 @@ static uint8_t md_input_zeromq_config(struct md_input_zeromq *miz)
 
     if (((miz->md_zmq_mask & META_TYPE_INTERFACE) ||
         (miz->md_zmq_mask & META_TYPE_POS) ||
-        (miz->md_zmq_mask & META_TYPE_RADIO)) &&
+        (miz->md_zmq_mask & META_TYPE_RADIO) ||
+	(miz->md_zmq_mask & META_TYPE_SYSTEM)) &&
         zmq_connect(miz->zmq_socket, "ipc:///tmp/nl_pub") == -1)
     {
         META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't connect to NL ZMQ publisher\n");
@@ -351,14 +352,21 @@ static uint8_t md_input_zeromq_config(struct md_input_zeromq *miz)
         return RETVAL_FAILURE;
     }
 
-    if (miz->md_zmq_mask & META_TYPE_INTERFACE)
+    if (miz->md_zmq_mask & META_TYPE_INTERFACE) {
         subscribe_for_topic(ZMQ_NL_INTERFACE_TOPIC, miz);
+    }
 
-    if (miz->md_zmq_mask & META_TYPE_RADIO)
+    if (miz->md_zmq_mask & META_TYPE_RADIO) {
         subscribe_for_topic(ZMQ_NL_RADIOEVENT_TOPIC, miz);
+    }
 
-    if (miz->md_zmq_mask & META_TYPE_POS)
+    if (miz->md_zmq_mask & META_TYPE_POS) {
         subscribe_for_topic(ZMQ_NL_GPS_TOPIC, miz);
+    }
+
+    if (miz->md_zmq_mask & META_TYPE_SYSTEM) {
+        subscribe_for_topic(ZMQ_NL_SYSTEMEVENT_TOPIC, miz);
+    }
 
     if (miz->md_zmq_mask & META_TYPE_CONNECTION) {
         subscribe_for_topic(ZMQ_DLB_METADATA_TOPIC, miz);
@@ -406,14 +414,17 @@ static uint8_t md_input_zeromq_init(void *ptr, json_object* config)
     json_object* subconfig;
     if (json_object_object_get_ex(config, "zmq_input", &subconfig)) {
         json_object_object_foreach(subconfig, key, val) {
-            if (!strcmp(key, "conn")) 
+            if (!strcmp(key, "conn")) {
                 miz->md_zmq_mask |= META_TYPE_CONNECTION;
-            else if (!strcmp(key, "pos")) 
+	    } else if (!strcmp(key, "pos")) {
                 miz->md_zmq_mask |= META_TYPE_POS;
-            else if (!strcmp(key, "iface")) 
+	    } else if (!strcmp(key, "iface")) {
                 miz->md_zmq_mask |= META_TYPE_INTERFACE;
-            else if (!strcmp(key, "radio"))
+	    } else if (!strcmp(key, "radio")) {
                 miz->md_zmq_mask |= META_TYPE_RADIO;
+	    } else if (!strcmp(key, "system")) {
+		miz->md_zmq_mask |= META_TYPE_SYSTEM;
+	    }
         }
     }
 
@@ -432,6 +443,7 @@ void md_zeromq_input_usage()
     fprintf(stderr, "  \"pos\":\t\tReceive ZeroMQ position events\n");
     fprintf(stderr, "  \"iface\":\t\tReceive ZeroMQ interface events\n");
     fprintf(stderr, "  \"radio\":\t\tReceive ZeroMQ radio events (QXDM + neigh. cells)\n");
+    fprintf(stderr, "  \"system\":\t\tReceive ZeroMQ system events (modem restarts)\n");
     fprintf(stderr, "},\n");
 }
 

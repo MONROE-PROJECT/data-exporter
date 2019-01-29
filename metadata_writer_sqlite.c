@@ -31,9 +31,12 @@
 #include <libmnl/libmnl.h>
 #include <string.h>
 #include <sys/time.h>
+#include <time.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <sqlite3.h>
+#include <linux/sysinfo.h>
+#include <sys/syscall.h>
 
 #include "metadata_writer_sqlite.h"
 #include "metadata_writer_inventory_conn.h"
@@ -295,25 +298,49 @@ static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char 
     return db_handle;
 }
 
-static int md_sqlite_read_boot_time(struct md_writer_sqlite *mws, uint64_t *boot_time)
+static int md_sqlite_read_orig_boot_time(struct md_writer_sqlite *mws)
 {
-    struct timeval tv;
-    uint64_t uptime;
+    struct timespec tp_raw, tp_real;
+    struct sysinfo info = {0};
 
-    //read uptime
-    if (system_helpers_read_uint64_from_file("/proc/uptime", &uptime)) {
-        return RETVAL_FAILURE;
+    syscall(SYS_sysinfo, &info);
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &tp_raw);
+    clock_gettime(CLOCK_REALTIME, &tp_real);
+
+    //This can only happen on boot on devices where time is reset to epoch.
+    //uptime and clock_gettime() come from different clock sources, uptime might
+    //for example have been updated before tp_real
+    if (info.uptime > tp_real.tv_sec) {
+        mws->orig_boot_time = 0;
+    } else {
+        mws->orig_boot_time = tp_real.tv_sec - info.uptime;
     }
 
-    gettimeofday(&tv, NULL);
-
-    *boot_time = tv.tv_sec - uptime;
-    
-    if (*boot_time < mws->orig_boot_time) {
-        return RETVAL_FAILURE;
-    }
+    mws->orig_uptime = info.uptime;
+    mws->orig_raw_time = tp_raw.tv_sec;
 
     return RETVAL_SUCCESS;
+}
+
+static void md_sqlite_get_real_boot_time(struct md_writer_sqlite *mws, uint64_t *real_boot_time)
+{
+    struct timespec tp_raw, tp_real;
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &tp_raw);
+    clock_gettime(CLOCK_REALTIME, &tp_real);
+
+    //The calculation here is as follows:
+    //* The goal is to find the correct boot time, now that we have a valid NTP fix
+    //* We get the current (walltime).
+    //* From this value we want to subtract the total uptime.
+    //* To reduce the number of clock sources, we use use MONOTONIG_RAW to calculate
+    //the amount of time that has passed since data_exporter was started.
+    //* We add the diff between (cur_raw - orig_raw) to the uptime we read when
+    //data_exporter was started. The sum is time elapsed since boot.
+    //* In order to get the "correct" boot time, we subtract the calculation above
+    //from the current walltime.
+    *real_boot_time = tp_real.tv_sec - (mws->orig_uptime + (tp_raw.tv_sec - mws->orig_raw_time));
 }
 
 static int md_sqlite_configure(struct md_writer_sqlite *mws,
@@ -453,6 +480,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
 
     if (mws->node_id && (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
         md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID) ||
+        md_sqlite_update_nodeid_db(mws, UPDATE_GPS_ID) ||
         md_sqlite_update_nodeid_db(mws, UPDATE_SYSTEM_ID))) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update old ements with id 0\n");
         return RETVAL_FAILURE;
@@ -466,7 +494,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         system_helpers_read_uint64_from_file(mws->last_conn_tstamp_path,
                 &(mws->dump_tstamp));
 
-    return md_sqlite_read_boot_time(mws, &(mws->orig_boot_time));
+    return md_sqlite_read_orig_boot_time(mws);
 }
 
 void md_sqlite_usage()
@@ -575,12 +603,11 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
 
     gettimeofday(&tv, NULL);
 
-    if (mws->ntp_fix_file[0] && access(mws->ntp_fix_file, F_OK))
-        return RETVAL_FAILURE;
-
-    if (md_sqlite_read_boot_time(mws, &real_boot_time)) {
+    if (mws->ntp_fix_file[0] && access(mws->ntp_fix_file, F_OK)) {
         return RETVAL_FAILURE;
     }
+
+    md_sqlite_get_real_boot_time(mws, &real_boot_time);
 
     META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Real boot %" PRIu64 " orig boot %" PRIu64 "\n", real_boot_time, mws->orig_boot_time);
 
@@ -589,6 +616,8 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
         md_sqlite_update_timestamp_db(mws, UPDATE_UPDATES_TSTAMP,
             mws->orig_boot_time, real_boot_time) ||
         md_sqlite_update_timestamp_db(mws, UPDATE_SYSTEM_TSTAMP,
+            mws->orig_boot_time, real_boot_time) ||
+        md_sqlite_update_timestamp_db(mws, UPDATE_GPS_TSTAMP,
             mws->orig_boot_time, real_boot_time)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update tstamp in database\n");
         return RETVAL_FAILURE;
@@ -610,6 +639,7 @@ static uint8_t md_sqlite_check_session_id(struct md_writer_sqlite *mws)
 
     if (md_sqlite_update_session_id_db(mws, UPDATE_EVENT_SESSION_ID) ||
         md_sqlite_update_session_id_db(mws, UPDATE_UPDATES_SESSION_ID) ||
+        md_sqlite_update_session_id_db(mws, UPDATE_GPS_SESSION_ID) ||
         md_sqlite_update_session_id_db(mws, UPDATE_SYSTEM_SESSION_ID)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update session id in database\n");
         mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
@@ -738,6 +768,7 @@ static void md_sqlite_handle_timeout(void *ptr)
 
         if (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
             md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID) ||
+            md_sqlite_update_nodeid_db(mws, UPDATE_GPS_ID) ||
             md_sqlite_update_nodeid_db(mws, UPDATE_SYSTEM_ID)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update node id in database\n");
 
