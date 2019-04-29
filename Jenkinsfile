@@ -1,6 +1,6 @@
 import java.text.SimpleDateFormat
 jobName = "metadata-exporter"
-version = "0.1.56"
+version = "0.1.57"
 build_dir = "build"
 buildPackageName = "meta-exporter"
 
