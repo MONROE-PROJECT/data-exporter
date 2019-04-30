@@ -229,7 +229,7 @@ static void md_neat_handle_iface_event(struct md_writer_neat *mwn,
 
     properties = json_object_new_object();
     md_neat_add_property_string(properties, "interface", mie->ifname, 2);
-    md_neat_add_property_string(properties, "local_ip", mie->ip_addr, 2);
+    if (mie->ip_addr) md_neat_add_property_string(properties, "local_ip", mie->ip_addr, 2);
     md_neat_add_property_bool(properties, "is_wired", false, 2);
     md_neat_add_property_int(properties, "device_mode", mie->device_mode, 2);
     md_neat_add_property_int(properties, "device_submode", mie->device_submode, 2);
