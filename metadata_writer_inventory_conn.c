@@ -59,6 +59,7 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
 {
     uint8_t csv_valid = 0;
     char csv_buf[UPDATE_STR_LEN] = {0};
+    const char *no_iccid_str = "0";
 
     csv_valid = md_inventory_conn_create_event_str(mce, csv_buf);
 
@@ -70,49 +71,53 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
     if (sqlite3_bind_int(stmt, 1, mws->node_id) ||
         sqlite3_bind_int64(stmt, 2, mws->session_id) ||
         sqlite3_bind_int64(stmt, 3, mws->session_id_multip) ||
-        sqlite3_bind_int64(stmt, 4, mce->tstamp) ||
-        sqlite3_bind_int(stmt, 5, mce->sequence) ||
-        sqlite3_bind_int(stmt, 6, mce->l3_session_id) ||
-        sqlite3_bind_int(stmt, 7, mce->l4_session_id) ||
-        sqlite3_bind_int(stmt, 8, mce->event_type) ||
-        sqlite3_bind_int(stmt, 9, mce->event_param) ||
-        sqlite3_bind_int(stmt, 10, mce->has_ip) ||
-        sqlite3_bind_int(stmt, 11, mce->connectivity) ||
-        sqlite3_bind_int(stmt, 13, mce->quality) ||
-        sqlite3_bind_int(stmt, 14, mce->interface_type) ||
-        sqlite3_bind_int(stmt, 16, mce->network_address_family) ||
-        sqlite3_bind_text(stmt, 17, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)){
+        sqlite3_bind_int64(stmt, 6, mce->tstamp) ||
+        sqlite3_bind_int(stmt, 7, mce->sequence) ||
+        sqlite3_bind_int(stmt, 8, mce->l3_session_id) ||
+        sqlite3_bind_int(stmt, 9, mce->l4_session_id) ||
+        sqlite3_bind_int(stmt, 10, mce->event_type) ||
+        sqlite3_bind_int(stmt, 11, mce->event_param) ||
+        sqlite3_bind_int(stmt, 12, mce->has_ip) ||
+        sqlite3_bind_int(stmt, 13, mce->connectivity) ||
+        sqlite3_bind_int(stmt, 15, mce->quality) ||
+        sqlite3_bind_int(stmt, 16, mce->interface_type) ||
+        sqlite3_bind_int(stmt, 18, mce->network_address_family) ||
+        sqlite3_bind_text(stmt, 19, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
     }
 
     if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
-        if (sqlite3_bind_text(stmt, 15, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 4, mce->interface_id /*SimCardIccid*/, strlen(mce->interface_id), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 5, mce->imsi, strlen(mce->imsi), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 17, mce->imei /*InterfaceId*/, strlen(mce->imei), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
             return SQLITE_ERROR;
         }
     } else {
-        if (sqlite3_bind_text(stmt, 15, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 4, no_iccid_str /*SimCardIccid*/, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 5, no_iccid_str /*SimCardImsi*/, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 17, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
             return SQLITE_ERROR;
         }
     }
 
     if (mce->connection_mode &&
-        sqlite3_bind_int(stmt, 12, mce->connection_mode)) {
+        sqlite3_bind_int(stmt, 14, mce->connection_mode)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind connection mode\n");
         return SQLITE_ERROR;
     }
 
     if (mce->network_provider &&
-        sqlite3_bind_int(stmt, 18, mce->network_provider)) {
+        sqlite3_bind_int(stmt, 20, mce->network_provider)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind network provider\n");
         return SQLITE_ERROR;
     }
 
     if (csv_valid &&
-            sqlite3_bind_text(stmt, 19, csv_buf, -1, NULL)) {
-        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind network provider\n");
+            sqlite3_bind_text(stmt, 21, csv_buf /*EventValueStr*/, -1, NULL)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind EventValueStr\n");
         return SQLITE_ERROR;
     }
 
@@ -123,6 +128,7 @@ static int32_t md_inventory_execute_insert(struct md_writer_sqlite *mws,
                                         struct md_conn_event *mce)
 {
     int32_t retval;
+    const char *no_iccid_str = "0";
 
     sqlite3_stmt *stmt = mws->insert_event;
     sqlite3_clear_bindings(stmt);
@@ -131,49 +137,53 @@ static int32_t md_inventory_execute_insert(struct md_writer_sqlite *mws,
     if (sqlite3_bind_int(stmt, 1, mws->node_id) ||
         sqlite3_bind_int64(stmt, 2, mws->session_id) ||
         sqlite3_bind_int64(stmt, 3, mws->session_id_multip) ||
-        sqlite3_bind_int64(stmt, 4, mce->tstamp) ||
-        sqlite3_bind_int(stmt, 5, mce->sequence) ||
-        sqlite3_bind_int(stmt, 6, mce->l3_session_id) ||
-        sqlite3_bind_int(stmt, 7, mce->l4_session_id) ||
-        sqlite3_bind_int(stmt, 8, mce->event_type) ||
-        sqlite3_bind_int(stmt, 9, mce->event_param) ||
-        sqlite3_bind_int(stmt, 11, mce->has_ip) ||
-        sqlite3_bind_int(stmt, 12, mce->connectivity) ||
-        sqlite3_bind_int(stmt, 14, mce->quality) ||
-        sqlite3_bind_int(stmt, 15, mce->interface_type) ||
-        sqlite3_bind_int(stmt, 16, mce->interface_id_type) ||
-        sqlite3_bind_int(stmt, 19, mce->network_address_family) ||
-        sqlite3_bind_text(stmt, 20, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
+        sqlite3_bind_int64(stmt, 6, mce->tstamp) ||
+        sqlite3_bind_int(stmt, 7, mce->sequence) ||
+        sqlite3_bind_int(stmt, 8, mce->l3_session_id) ||
+        sqlite3_bind_int(stmt, 9, mce->l4_session_id) ||
+        sqlite3_bind_int(stmt, 10, mce->event_type) ||
+        sqlite3_bind_int(stmt, 11, mce->event_param) ||
+        sqlite3_bind_int(stmt, 13, mce->has_ip) ||
+        sqlite3_bind_int(stmt, 14, mce->connectivity) ||
+        sqlite3_bind_int(stmt, 16, mce->quality) ||
+        sqlite3_bind_int(stmt, 17, mce->interface_type) ||
+        sqlite3_bind_int(stmt, 18, mce->interface_id_type) ||
+        sqlite3_bind_int(stmt, 21, mce->network_address_family) ||
+        sqlite3_bind_text(stmt, 22, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
     }
 
     if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
-        if (sqlite3_bind_text(stmt, 17, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 4, mce->interface_id /*SimCardIccid*/, strlen(mce->interface_id), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 5, mce->imsi, strlen(mce->imsi), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 19, mce->imei /*InterfaceId*/, strlen(mce->imei), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
             return SQLITE_ERROR;
         }
     } else {
-        if (sqlite3_bind_text(stmt, 17, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 4, no_iccid_str /*SimCardIccid*/, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 5, no_iccid_str /*SimCardImsi*/, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 19, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
             return SQLITE_ERROR;
         }
     }
 
     if (mce->connection_mode &&
-        sqlite3_bind_int(stmt, 13, mce->connection_mode)) {
+        sqlite3_bind_int(stmt, 15, mce->connection_mode)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed bind event value (int)\n");
         return SQLITE_ERROR;
     }
 
     if (mce->event_value != UINT8_MAX &&
-        sqlite3_bind_int(stmt, 10, mce->event_value)) {
+        sqlite3_bind_int(stmt, 12, mce->event_value)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed bind event value (int)\n");
         return SQLITE_ERROR;
     }
 
     if (mce->network_provider) {
-        retval = sqlite3_bind_int(stmt, 18, mce->network_provider);
+        retval = sqlite3_bind_int(stmt, 20, mce->network_provider);
 
         if (retval) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind provider to INSERT query\n");
@@ -190,6 +200,7 @@ static int32_t md_inventory_update_event(struct md_writer_sqlite *mws,
     sqlite3_stmt *stmt = mws->update_update;
     uint8_t csv_valid = 0;
     char csv_buf[UPDATE_STR_LEN] = {0};
+    const char *no_iccid_str = "0";
 
     csv_valid = md_inventory_conn_create_event_str(mce, csv_buf);
 
@@ -202,19 +213,23 @@ static int32_t md_inventory_update_event(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 5, mce->quality) ||
         sqlite3_bind_int(stmt, 7, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 8, mce->l4_session_id) ||
-        sqlite3_bind_int(stmt, 9, mce->network_address_family) ||
-        sqlite3_bind_text(stmt, 10, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
+        sqlite3_bind_int(stmt, 11, mce->network_address_family) ||
+        sqlite3_bind_text(stmt, 12, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE query\n");
         return SQLITE_ERROR;
     }
 
     if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
-        if (sqlite3_bind_text(stmt, 11, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 9, mce->interface_id /*SimCardIccid*/, strlen(mce->interface_id), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 10, mce->imsi, strlen(mce->imsi), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 13, mce->imei /*InterfaceId*/, strlen(mce->imei), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
             return SQLITE_ERROR;
         }
     } else {
-        if (sqlite3_bind_text(stmt, 11, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 9, no_iccid_str /*SimCardIccid*/, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 10, no_iccid_str /*SimCardImsi*/, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 13, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
             return SQLITE_ERROR;
         }
@@ -239,9 +254,10 @@ static int32_t md_inventory_execute_insert_usage(struct md_writer_sqlite *mws,
                                               struct md_conn_event *mce,
                                               uint64_t date_start)
 {
-    uint8_t interface_id_idx = 1;
+    uint8_t interface_id_idx = 2;
     sqlite3_stmt *stmt = mws->insert_usage;
     const char *no_iccid_str = "0";
+    char *sql_stmt_str;
 
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
@@ -249,31 +265,39 @@ static int32_t md_inventory_execute_insert_usage(struct md_writer_sqlite *mws,
     //For modems we need both IMEI and ICCID. ICCID is currently stored in the
     //interface_id variable, so some special handling is needed for now
     if (mce->imei) {
-        if (sqlite3_bind_text(stmt, 1, mce->imei, strlen(mce->imei), SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 6, mce->imsi, strlen(mce->imsi), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 2, mce->imei, strlen(mce->imei), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 7, mce->imsi, strlen(mce->imsi), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI/IMSI\n");
             return SQLITE_ERROR;
         }
 
-        interface_id_idx = 5;
+        interface_id_idx = 6;
     } else {
-        if (sqlite3_bind_text(stmt, 5, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 6, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 6, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 7, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind empty IMEI/IMSI\n");
             return SQLITE_ERROR;
         }
     }
 
-    if (sqlite3_bind_text(stmt, interface_id_idx, mce->interface_id,
+    if (sqlite3_bind_int(stmt, 1, mws->node_id) ||
+        sqlite3_bind_text(stmt, interface_id_idx, mce->interface_id,
             strlen(mce->interface_id), SQLITE_STATIC) ||
-        sqlite3_bind_int(stmt, 2, mce->network_address_family) ||
-        sqlite3_bind_int(stmt, 3, mce->event_type) ||
-        sqlite3_bind_int(stmt, 4, mce->event_param) ||
-        sqlite3_bind_int64(stmt, 7, date_start) ||
-        sqlite3_bind_int64(stmt, 8, mce->rx_bytes) ||
-        sqlite3_bind_int64(stmt, 9, mce->tx_bytes)) {
+        sqlite3_bind_int(stmt, 3, mce->network_address_family) ||
+        sqlite3_bind_int(stmt, 4, mce->event_type) ||
+        sqlite3_bind_int(stmt, 5, mce->event_param) ||
+        sqlite3_bind_int64(stmt, 8, date_start) ||
+        sqlite3_bind_int64(stmt, 9, mce->rx_bytes) ||
+        sqlite3_bind_int64(stmt, 10, mce->tx_bytes)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT usage query\n");
         return SQLITE_ERROR;
+    }
+
+    sql_stmt_str = sqlite3_expanded_sql(stmt);
+
+    if (sql_stmt_str) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Insert query: %s\n", sql_stmt_str);
+        sqlite3_free(sql_stmt_str);
     }
 
     return sqlite3_step(stmt);
@@ -284,6 +308,8 @@ static int32_t md_inventory_execute_update_usage(struct md_writer_sqlite *mws,
                                               uint64_t date_start)
 {
     const char *no_iccid_str = "0";
+    char *sql_stmt_str;
+
     sqlite3_stmt *stmt = mws->update_usage;
 
     sqlite3_clear_bindings(stmt);
@@ -319,7 +345,12 @@ static int32_t md_inventory_execute_update_usage(struct md_writer_sqlite *mws,
         }
     }
 
-    META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Update query: %s\n", sqlite3_expanded_sql(stmt));
+    sql_stmt_str = sqlite3_expanded_sql(stmt);
+
+    if (sql_stmt_str) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Update query: %s\n", sql_stmt_str);
+        sqlite3_free(sql_stmt_str);
+    }
 
     return sqlite3_step(stmt);
 }
@@ -344,6 +375,7 @@ static int16_t md_inventory_get_last_update(struct md_writer_sqlite *mws,
 {
     int16_t retval = -1;
     int numbytes = 0;
+    const char *no_iccid_str = "0";
     const unsigned char *event_value_str = NULL;
     char event_str_cpy[EVENT_STR_LEN];
     sqlite3_stmt *stmt = mws->last_update;
@@ -355,19 +387,23 @@ static int16_t md_inventory_get_last_update(struct md_writer_sqlite *mws,
 
     if (sqlite3_bind_int(stmt, 1, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 2, mce->l4_session_id) ||
-        sqlite3_bind_int(stmt, 4, mce->network_address_family) ||
-        sqlite3_bind_text(stmt, 5, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
+        sqlite3_bind_int(stmt, 6, mce->network_address_family) ||
+        sqlite3_bind_text(stmt, 7, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to SELECT query\n");
         return retval;
     }
 
     if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
-        if (sqlite3_bind_text(stmt, 3, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 4, mce->interface_id /*SimCardIccid*/, strlen(mce->interface_id), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 5, mce->imsi, strlen(mce->imsi), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 3, mce->imei /*InterfaceId*/, strlen(mce->imei), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
             return SQLITE_ERROR;
         }
     } else {
-        if (sqlite3_bind_text(stmt, 3, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 4, no_iccid_str /*SimCardIccid*/, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 5, no_iccid_str /*SimCardImsi*/, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 3, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
             return SQLITE_ERROR;
         }

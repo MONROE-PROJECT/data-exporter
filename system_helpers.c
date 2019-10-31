@@ -45,18 +45,17 @@
 #ifdef OPENWRT
 uint32_t system_helpers_get_nodeid()
 {
-    char *opt;
-    struct uci_ptr uciptr;
+    char *opt = NULL;
+    struct uci_ptr uciptr = {0};
     int retval;
     long node_id;
     struct uci_context *ctx = uci_alloc_context();
 
-    if(ctx == NULL)
+    if (ctx == NULL)
         return 0;
 
-    opt = malloc(strlen(NODEIDPATH)+1);
+    opt = calloc(strlen(NODEIDPATH)+1, 1);
     strcpy(opt, NODEIDPATH);
-    memset(&uciptr, 0, sizeof(uciptr));
 
     retval = uci_lookup_ptr(ctx, &uciptr, opt, true);
 

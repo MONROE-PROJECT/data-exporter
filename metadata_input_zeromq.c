@@ -238,7 +238,7 @@ static void md_input_zeromq_handle_event(void *ptr, int32_t fd, uint32_t events)
     int zmq_events = 0;
     size_t events_len = sizeof(zmq_events);
     json_object *json_event = NULL, *zmqh_obj = NULL;
-    const char *json_msg;
+    const char *json_msg = NULL, *json_str;
     uint8_t event_type = 0;
 
     zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
@@ -246,11 +246,18 @@ static void md_input_zeromq_handle_event(void *ptr, int32_t fd, uint32_t events)
     while (zmq_events & ZMQ_POLLIN)
     {
         char buf[2048] = {0};
-        zmq_recv(miz->zmq_socket, buf, 2048, 0);
+        int nbytes = zmq_recv(miz->zmq_socket, buf, 2047, 0);
+
+        if (nbytes == -1) {
+            zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
+            continue;
+        }
+
+        //Ensure zero teminated string, in case zmq does something funky with buffer
+        buf[nbytes] = '\0';
 
         json_msg = strchr(buf, '{');
-        if (json_msg == NULL)
-        {
+        if (json_msg == NULL) {
             zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
             continue;
         }
@@ -289,7 +296,8 @@ static void md_input_zeromq_handle_event(void *ptr, int32_t fd, uint32_t events)
             return;
         }
 
-        META_PRINT(miz->parent->logfile, "Got JSON %s\n", json_object_to_json_string(zmqh_obj));
+        json_str = json_object_to_json_string(zmqh_obj);
+        META_PRINT(miz->parent->logfile, "Got JSON %s\n", json_str);
 
         switch (event_type) {
             case META_TYPE_INTERFACE:

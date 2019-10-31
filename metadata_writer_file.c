@@ -51,14 +51,14 @@ static int md_file_add_json_string(struct json_object *obj,
 {
     struct json_object *value_obj = NULL;
 
-    if (value != NULL)
-    {
+    if (value != NULL) {
         value_obj = json_object_new_string(value);
         if (!value_obj)
             return RETVAL_FAILURE;
+
+	json_object_object_add(obj, key, value_obj);
     }
 
-    json_object_object_add(obj, key, value_obj);
     return RETVAL_SUCCESS;
 }
 
@@ -79,7 +79,7 @@ static int md_file_add_json_obj(struct json_object *obj,
 static int md_file_save(struct md_writer_file *mwf, int event_type, const char *content)
 {
     int output_fd;
-    char dst_filename[128] = {0};
+    char dst_filename[133] = {0};
     char *prefix;
     FILE *output;
 

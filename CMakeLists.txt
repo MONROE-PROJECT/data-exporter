@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(meta_exporter)
 
-set(CMAKE_C_FLAGS "-O1 -Wall -std=gnu99 -g -s")
+set(CMAKE_C_FLAGS "-O1 -Wall -std=gnu99 -s")
 
 set(LIBS pthread mnl)
 set(SOURCE
