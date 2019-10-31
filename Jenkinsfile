@@ -1,10 +1,10 @@
 import java.text.SimpleDateFormat
 jobName = "metadata-exporter"
-version = "0.1.58"
+version = "0.1.59"
 build_dir = "build"
 buildPackageName = "meta-exporter"
 
-node ('dockerslave') {
+node ('dockermonroe') {
     // Be sure that workspace is cleaned
     deleteDir()
     stage ('Git') {
