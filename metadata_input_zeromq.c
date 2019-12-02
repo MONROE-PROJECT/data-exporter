@@ -424,15 +424,15 @@ static uint8_t md_input_zeromq_init(void *ptr, json_object* config)
         json_object_object_foreach(subconfig, key, val) {
             if (!strcmp(key, "conn")) {
                 miz->md_zmq_mask |= META_TYPE_CONNECTION;
-	    } else if (!strcmp(key, "pos")) {
+            } else if (!strcmp(key, "pos")) {
                 miz->md_zmq_mask |= META_TYPE_POS;
-	    } else if (!strcmp(key, "iface")) {
+            } else if (!strcmp(key, "iface")) {
                 miz->md_zmq_mask |= META_TYPE_INTERFACE;
-	    } else if (!strcmp(key, "radio")) {
+            } else if (!strcmp(key, "radio")) {
                 miz->md_zmq_mask |= META_TYPE_RADIO;
-	    } else if (!strcmp(key, "system")) {
-		miz->md_zmq_mask |= META_TYPE_SYSTEM;
-	    }
+            } else if (!strcmp(key, "system")) {
+                miz->md_zmq_mask |= META_TYPE_SYSTEM;
+            }
         }
     }
 
