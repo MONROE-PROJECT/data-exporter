@@ -67,7 +67,7 @@ static struct nne_metadata_descr NNE_METADATA_DESCR[] = {
     { NNE_IDX_IMSI,      "imsi",         0, NNE_TYPE_STRING, IFACE_EVENT_MODE_CHANGE, md_iface_parse_imsi },
     { NNE_IDX_BAND,      "band",         0, NNE_TYPE_UINT8,  IFACE_EVENT_LTE_BAND_CHANGE, md_iface_parse_band },
     { NNE_IDX_FREQUENCY, "lte_freq",     0, NNE_TYPE_UINT32, IFACE_EVENT_LTE_BAND_CHANGE, md_iface_parse_frequency },
-    { NNE_IDX_TX_POWER,  "tx_power",     0, NNE_TYPE_UINT32, IFACE_EVENT_TX_POWER_CHANGE, md_iface_parse_tx_power },
+    { NNE_IDX_TX_POWER,  "tx_power",     0, NNE_TYPE_INT32,  IFACE_EVENT_TX_POWER_CHANGE, md_iface_parse_tx_power },
     { NNE_IDX_EARFCN,    "earfcn",       0, NNE_TYPE_UINT32, IFACE_EVENT_EARFCN_CHANGE, md_iface_parse_earfcn },
     { NNE_IDX_CELEVEL,   "celevel",      0, NNE_TYPE_UINT8,   IFACE_EVENT_CELEVEL_CHANGE, md_iface_parse_celevel }
 };
