@@ -65,6 +65,10 @@ const char *nne_keys[MD_ZMQ_KEYS_MAX + 1] = {
     "nmea_raw",
     "speed",
 
+    "tx_power",
+    "earfcn",
+    "celevel",
+ 
     "cell_id",
     "plmn",
     "lac",

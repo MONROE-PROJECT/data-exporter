@@ -63,6 +63,10 @@ const char *monroe_keys[MD_ZMQ_KEYS_MAX + 1] = {
     "NMEA",
     "Speed",
 
+    "TxPower",
+    "EARFCN",
+    "CELevel",
+
     "CellID",
     "PLMN",
     "LAC",

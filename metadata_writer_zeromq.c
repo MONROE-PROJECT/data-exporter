@@ -460,15 +460,12 @@ static json_object *md_zeromq_writer_create_iface_json(const struct md_writer_ze
         (mie->tx_power != DEFAULT_TX_POWER &&
             !md_zeromq_writer_create_json_int(obj,
                 mwz->keys[MD_ZMQ_KEY_TX_POWER], mie->tx_power)) ||
-        (mie->iot_earfcn != DEFAULT_IOT_EARCFN &&
+        (mie->iot_earfcn != DEFAULT_IOT_EARFCN &&
             !md_zeromq_writer_create_json_int(obj,
-                mwz->keys[MD_ZMQ_KEY_IOT_EARCFN], mie->iot_earfcn)) ||
-        (mie->iot_ecl != DEFAULT_IOT_ECL &&
+                mwz->keys[MD_ZMQ_KEY_IOT_EARFCN], mie->iot_earfcn)) ||
+        (mie->iot_celevel != DEFAULT_IOT_CELEVEL &&
             !md_zeromq_writer_create_json_int(obj,
-                mwz->keys[MD_ZMQ_KEY_IOT_ECL], mie->iot_ecl)) ||
-        (mie->iot_snr != DEFAULT_IOT_SNR &&
-            !md_zeromq_writer_create_json_int(obj,
-                mwz->keys[MD_ZMQ_KEY_IOT_SNR], mie->iot_snr)) ||
+                mwz->keys[MD_ZMQ_KEY_IOT_CELEVEL], mie->iot_celevel)) ||
         (mie->enodeb_id != DEFAULT_ENODEBID &&
             !md_zeromq_writer_create_json_int(obj,
                 mwz->keys[MD_ZMQ_KEY_ENODEB_ID], mie->enodeb_id))) {

@@ -72,8 +72,7 @@
 
 #define DEFAULT_TX_POWER      0
 #define DEFAULT_IOT_EARFCN    0
-#define DEFAULT_IOT_ECL       0
-#define DEFAULT_IOT_SNR       0
+#define DEFAULT_IOT_CELEVEL   0
 
 enum iface_event {
     IFACE_EVENT_DEV_STATE=1,
@@ -199,8 +198,7 @@ struct md_iface_event {
     uint16_t lte_pci;
     uint16_t tx_power;
     uint16_t iot_earfcn;
-    uint16_t iot_ecl;
-    uint16_t iot_snr;
+    uint16_t iot_celevel;
     int8_t rssi;
     int8_t ecio;
     int8_t lte_rssi;
