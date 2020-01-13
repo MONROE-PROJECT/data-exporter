@@ -76,6 +76,14 @@ enum nne_metadata_idx
     NNE_IDX_OPER,
     NNE_IDX_IPADDR,
     NNE_IDX_DEV_STATE,
+
+    NNE_IDX_IMSI,
+    NNE_IDX_BAND,
+    NNE_IDX_FREQUENCY,
+
+    NNE_IDX_TX_POWER,
+    NNE_IDX_CELEVEL,
+    NNE_IDX_EARFCN,
     __NNE_IDX_MAX
 };
 
