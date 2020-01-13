@@ -1,6 +1,6 @@
 import java.text.SimpleDateFormat
 jobName = "metadata-exporter"
-version = "0.1.59"
+version = "0.1.60"
 build_dir = "build"
 buildPackageName = "meta-exporter"
 
@@ -11,7 +11,7 @@ node ('dockermonroe') {
         git branch: 'master', url: 'git@github.com:MONROE-PROJECT/Utilities.git'
 
         checkout([$class: 'GitSCM',
-            branches: [[name: 'master']],
+            branches: [[name: 'nne-iot']],
             doGenerateSubmoduleConfigurations: false,
             extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'metadata-exporter-alt']],
             submoduleCfg: [],
