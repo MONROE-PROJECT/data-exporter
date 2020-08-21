@@ -140,7 +140,6 @@ uint8_t parse_iface_event(struct json_object *meta_obj, struct md_iface_event *m
             mie->enodeb_id = json_object_get_int(val);
         } else if (!strcmp(key, "ca_info")) {
             mie->ca_info = json_object_to_json_string_ext(val, JSON_C_TO_STRING_PLAIN);
-
         } else if (!strcmp(key, "tx_power")) {
             mie->tx_power = (int32_t) json_object_get_int(val);
         } else if (!strcmp(key, "earfcn")) {

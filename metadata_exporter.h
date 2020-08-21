@@ -72,7 +72,7 @@
 
 #define DEFAULT_TX_POWER      0
 #define DEFAULT_IOT_EARFCN    0
-#define DEFAULT_IOT_CELEVEL   0
+#define DEFAULT_IOT_CELEVEL  -1
 
 enum iface_event {
     IFACE_EVENT_DEV_STATE=1,
