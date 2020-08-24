@@ -4,7 +4,7 @@ version = "0.1.61"
 build_dir = "build"
 buildPackageName = "meta-exporter"
 
-node ('dockermonroe') {
+node {
     // Be sure that workspace is cleaned
     deleteDir()
     stage ('Git') {
