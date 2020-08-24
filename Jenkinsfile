@@ -33,32 +33,37 @@ node {
                 userRemoteConfigs: [[url: 'git@github.com:Celerway/celerway-jenkins.git']]])
     }
 
-    stage ('Build') {
-        dir(build_dir) {
-            sh "cmake ../metadata-exporter-alt -DNNE=1 -DSQLITE3=1 -DZEROMQ_INPUT=1 -DZEROMQ_WRITER=1 -DZEROMQ_RELAY=1 -DGPS_NSB=1 -DMUNIN=1 -DSYSEVENT=1 -DNEAT=1 && make && make package"
-        }
-        sh "chmod +x versionize/versionize.sh; cp versionize/versionize.sh build/"
-        dir(build_dir) {
-            sh "mv meta_exporter-0.1.0-Linux.deb meta-exporter-0.1.0-Linux.deb"
-            sh "./versionize.sh meta-exporter-0.1.0-Linux.deb ${buildPackageName} ${version} ${shortCommit} || true"
-            sh "rm meta-exporter-0.1.0-Linux.deb"
-        }
-    }
+    docker.withRegistry('http://registry:5000') {
+        docker.image('registry:5000/jenkins-slave:monroe').inside('-u jenkins') {
 
-    stage ('Configure') {
-        dir(build_dir) {
-            sh """echo `cat pk_${buildPackageName}/DEBIAN/control |grep Version|sed -e 's/Version: //'` > pkgver"""
-        }
-        sh """cp -an metadata-exporter/* build/pk_${buildPackageName}/"""
-        dir(build_dir) {
-            sh """sed -i -e 's/${buildPackageName}/metadata-exporter/g' pk_${buildPackageName}/DEBIAN/md5sums pk_${buildPackageName}/DEBIAN/control"""
-            sh """mkdir -p pk_${buildPackageName}/usr/sbin && mv pk_${buildPackageName}/usr/sbin/meta_exporter pk_${buildPackageName}/usr/sbin/metadata-exporter"""
-            sh '''PKGVER=`cat pkgver` ;dpkg -b pk_meta-exporter metadata-exporter-${PKGVER}-Linux.deb'''
-            sh "rm meta-exporter*.deb"
-        }
-    }
+	    stage ('Build') {
+		dir(build_dir) {
+		    sh "cmake ../metadata-exporter-alt -DNNE=1 -DSQLITE3=1 -DZEROMQ_INPUT=1 -DZEROMQ_WRITER=1 -DZEROMQ_RELAY=1 -DGPS_NSB=1 -DMUNIN=1 -DSYSEVENT=1 -DNEAT=1 && make && make package"
+		}
+		sh "chmod +x versionize/versionize.sh; cp versionize/versionize.sh build/"
+		dir(build_dir) {
+		    sh "mv meta_exporter-0.1.0-Linux.deb meta-exporter-0.1.0-Linux.deb"
+		    sh "./versionize.sh meta-exporter-0.1.0-Linux.deb ${buildPackageName} ${version} ${shortCommit} || true"
+		    sh "rm meta-exporter-0.1.0-Linux.deb"
+		}
+	    }
 
-    stage ('Archive artifacts') {
-        archiveArtifacts "${build_dir}/*.deb"
+	    stage ('Configure') {
+		dir(build_dir) {
+		    sh """echo `cat pk_${buildPackageName}/DEBIAN/control |grep Version|sed -e 's/Version: //'` > pkgver"""
+		}
+		sh """cp -an metadata-exporter/* build/pk_${buildPackageName}/"""
+		dir(build_dir) {
+		    sh """sed -i -e 's/${buildPackageName}/metadata-exporter/g' pk_${buildPackageName}/DEBIAN/md5sums pk_${buildPackageName}/DEBIAN/control"""
+		    sh """mkdir -p pk_${buildPackageName}/usr/sbin && mv pk_${buildPackageName}/usr/sbin/meta_exporter pk_${buildPackageName}/usr/sbin/metadata-exporter"""
+		    sh '''PKGVER=`cat pkgver` ;dpkg -b pk_meta-exporter metadata-exporter-${PKGVER}-Linux.deb'''
+		    sh "rm meta-exporter*.deb"
+		}
+	    }
+
+	    stage ('Archive artifacts') {
+		archiveArtifacts "${build_dir}/*.deb"
+            }
+        }
     }
 }
