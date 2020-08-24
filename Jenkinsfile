@@ -56,6 +56,7 @@ node {
 		dir(build_dir) {
 		    sh """sed -i -e 's/${buildPackageName}/metadata-exporter/g' pk_${buildPackageName}/DEBIAN/md5sums pk_${buildPackageName}/DEBIAN/control"""
 		    sh """mkdir -p pk_${buildPackageName}/usr/sbin && mv pk_${buildPackageName}/usr/sbin/meta_exporter pk_${buildPackageName}/usr/sbin/metadata-exporter"""
+                    sh "chmod 0755 pk_meta-exporter"
 		    sh '''PKGVER=`cat pkgver` ;dpkg -b pk_meta-exporter metadata-exporter-${PKGVER}-Linux.deb'''
 		    sh "rm meta-exporter*.deb"
 		}
